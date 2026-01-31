@@ -1,0 +1,71 @@
+# Algorithmic Trading Configuration Template
+# Copy this file to config.yaml and fill in your API credentials
+
+# Trading Mode
+mode: paper  # 'paper' or 'live'
+
+# Initial Capital
+initial_capital: 100000.00
+
+# Broker API Configuration
+brokers:
+  alpaca:
+    api_key: "YOUR_ALPACA_API_KEY"
+    api_secret: "YOUR_ALPACA_API_SECRET"
+    paper: true  # Use paper trading
+    base_url: "https://paper-api.alpaca.markets"  # Paper trading URL
+    # Live URL: "https://api.alpaca.markets"
+  
+  interactive_brokers:
+    host: "127.0.0.1"
+    port: 7497  # TWS: 7496, IB Gateway: 4001
+    client_id: 1
+
+# Data Provider Configuration
+data:
+  provider: yfinance  # 'yfinance', 'alpaca', 'polygon'
+  cache_dir: "data/cache"
+  default_period: "1y"
+  default_interval: "1d"
+
+# Risk Management Settings
+risk:
+  max_position_size: 0.10  # Max 10% of portfolio per position
+  max_drawdown_pct: 10.0   # Stop trading at 10% drawdown
+  daily_loss_limit: 1000.0 # Max daily loss in currency
+  max_open_positions: 5
+  max_leverage: 1.0        # No leverage
+
+# Strategy Settings
+strategies:
+  sma_crossover:
+    enabled: true
+    fast_period: 20
+    slow_period: 50
+    symbols:
+      - AAPL
+      - MSFT
+      - GOOGL
+      - AMZN
+      - TSLA
+
+# Notification Settings (optional)
+notifications:
+  email:
+    enabled: false
+    smtp_server: "smtp.gmail.com"
+    smtp_port: 587
+    username: "your_email@gmail.com"
+    password: "your_app_password"
+    to_email: "your_email@gmail.com"
+  
+  webhook:
+    enabled: false
+    url: "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+
+# Logging
+logging:
+  level: INFO  # DEBUG, INFO, WARNING, ERROR
+  file: "logs/algo-trading.log"
+  max_size_mb: 10
+  backup_count: 5
