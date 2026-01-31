@@ -4,14 +4,33 @@ numpy>=1.24.0
 yfinance>=0.2.28
 backtrader>=1.9.78.123
 
+# Async HTTP client with rate limiting
+httpx>=0.25.0
+aiohttp>=3.9.0
+aiolimiter>=1.1.0
+cryptography>=42.0.0
+
+# Database
+sqlalchemy>=2.0.0
+asyncpg>=0.29.0
+alembic>=1.12.0
+psycopg2-binary>=2.9.9
+
+# Logging
+loguru>=0.7.0
+
 # Broker APIs
 alpaca-trade-api>=3.0.0
 ib-insync>=0.9.70
+python-binance>=1.0.19
+krakenex>=2.1.0
+pykrakenapi>=0.3.2
 
 # Data & Analysis
 requests>=2.31.0
 python-dotenv>=1.0.0
 pyyaml>=6.0.1
+websockets>=10.4
 
 # Visualization
 matplotlib>=3.7.0
@@ -24,8 +43,14 @@ notebook>=7.0.0
 # Testing
 pytest>=7.4.0
 pytest-cov>=4.1.0
+pytest-asyncio>=0.21.0
 
 # Code quality
 black>=23.0.0
 mypy>=1.5.0
 flake8>=6.1.0
+
+# Type hints
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+typing-extensions>=4.8.0
