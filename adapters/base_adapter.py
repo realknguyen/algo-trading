@@ -14,7 +14,7 @@ from urllib.parse import urlencode
 import httpx
 from aiolimiter import AsyncLimiter
 
-from logging.log_config import TradingLogger
+from log_config import TradingLogger
 
 
 class OrderType(str, Enum):

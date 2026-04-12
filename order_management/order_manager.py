@@ -12,7 +12,7 @@ from adapters.base_adapter import (
     BaseExchangeAdapter, Order, OrderType, OrderSide, 
     OrderStatus, TimeInForce
 )
-from logging.log_config import TradingLogger
+from log_config import TradingLogger
 
 
 class OMSStatus(Enum):

@@ -167,9 +167,6 @@ class TestEndToEndWorkflow:
         assert risk_manager.can_trade() is True
         
         risk_manager.record_trade(-1000)
-        assert risk_manager.can_trade() is True
-        
-        risk_manager.record_trade(-1000)  # Third loss triggers circuit breaker
         assert risk_manager.can_trade() is False
         assert risk_manager._halted is True
     

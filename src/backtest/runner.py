@@ -43,8 +43,29 @@ class BacktestResult:
     
     def calculate_metrics(self) -> Dict[str, float]:
         """Calculate performance metrics."""
+        metrics = {
+            "total_return_pct": self.total_return_pct,
+            "win_rate": 0.0,
+            "profit_factor": 0.0,
+            "max_drawdown_pct": 0.0,
+            "sharpe_ratio": 0.0,
+            "num_trades": len(self.trades),
+        }
+
+        if not self.equity_curve.empty:
+            rolling_max = self.equity_curve.cummax()
+            drawdown = (self.equity_curve - rolling_max) / rolling_max
+            metrics["max_drawdown_pct"] = drawdown.min() * 100
+            self.max_drawdown = drawdown.min() * self.initial_capital
+            self.max_drawdown_pct = metrics["max_drawdown_pct"]
+
+            daily_returns = self.equity_curve.pct_change().dropna()
+            if len(daily_returns) > 1 and daily_returns.std() > 0:
+                metrics["sharpe_ratio"] = (daily_returns.mean() / daily_returns.std()) * np.sqrt(252)
+                self.sharpe_ratio = metrics["sharpe_ratio"]
+
         if not self.trades:
-            return {}
+            return metrics
         
         returns = [t.return_pct for t in self.trades]
         wins = [r for r in returns if r > 0]
@@ -55,27 +76,12 @@ class BacktestResult:
         total_wins = sum(wins) if wins else 0
         total_losses = abs(sum(losses)) if losses else 0
         self.profit_factor = total_wins / total_losses if total_losses > 0 else float('inf')
+        metrics["win_rate"] = self.win_rate * 100
+        metrics["profit_factor"] = self.profit_factor
+        metrics["num_trades"] = len(self.trades)
+
+        return metrics
         
-        # Calculate max drawdown from equity curve
-        if not self.equity_curve.empty:
-            rolling_max = self.equity_curve.cummax()
-            drawdown = (self.equity_curve - rolling_max) / rolling_max
-            self.max_drawdown_pct = drawdown.min() * 100
-            self.max_drawdown = drawdown.min() * self.initial_capital
-            
-            # Sharpe ratio (assuming risk-free rate of 0 for simplicity)
-            daily_returns = self.equity_curve.pct_change().dropna()
-            if len(daily_returns) > 1 and daily_returns.std() > 0:
-                self.sharpe_ratio = (daily_returns.mean() / daily_returns.std()) * np.sqrt(252)
-        
-        return {
-            'total_return_pct': self.total_return_pct,
-            'win_rate': self.win_rate * 100,
-            'profit_factor': self.profit_factor,
-            'max_drawdown_pct': self.max_drawdown_pct,
-            'sharpe_ratio': self.sharpe_ratio,
-            'num_trades': len(self.trades)
-        }
     
     def summary(self) -> str:
         """Generate a summary report."""
@@ -125,17 +131,28 @@ class BacktestRunner:
         Returns:
             BacktestResult with performance metrics
         """
+        if data is None or data.empty:
+            raise ValueError("Backtest data cannot be empty")
+
         capital = self.initial_capital
         position = 0  # 0 = flat, 1 = long
         entry_price = 0.0
         entry_date = None
         trades = []
-        equity = [capital]
+        equity = [capital for _ in range(len(data))]
+        start = data.index[0] if isinstance(data.index[0], datetime) else datetime.now()
+        end = data.index[-1] if isinstance(data.index[-1], datetime) else datetime.now()
+
+        warmup = 0
+        if isinstance(strategy, object) and hasattr(strategy, "params"):
+            warmup = int(strategy.params.get("slow_period", 0) or 0)
+        warmup = max(1, warmup)
+        warmup = min(warmup, len(data))
         
         # Initialize strategy
-        strategy.initialize(data.iloc[:50] if len(data) > 50 else data)
+        strategy.initialize(data.iloc[:warmup] if warmup > 0 else data)
         
-        for i in range(50, len(data)):
+        for i in range(warmup, len(data)):
             window = data.iloc[:i+1]
             current = data.iloc[i]
             
@@ -148,7 +165,7 @@ class BacktestRunner:
                     entry_price = current['close'] * (1 + self.commission)
                     entry_date = current.name if isinstance(current.name, datetime) else data.index[i]
                     position = 1
-                    
+                    # Track position value using commission-adjusted entry
                 elif signal.action == 'sell' and position == 1:
                     # Exit long position
                     exit_price = current['close'] * (1 - self.commission)
@@ -174,44 +191,46 @@ class BacktestRunner:
                     capital *= (1 + return_pct / 100)
                     position = 0
             
-            # Update equity curve
-            if position == 1:
+            is_last_bar = i == len(data) - 1
+            # Force close remaining position on last bar for a complete equity path.
+            if is_last_bar and position == 1:
+                final_close = current['close'] * (1 - self.commission)
+                pnl = final_close - entry_price
+                return_pct = (final_close - entry_price) / entry_price * 100
+                trade = Trade(
+                    entry_date=entry_date,
+                    exit_date=current.name if isinstance(current.name, datetime) else data.index[i],
+                    symbol=symbol,
+                    side='long',
+                    entry_price=entry_price,
+                    exit_price=final_close,
+                    quantity=1.0,
+                    pnl=pnl,
+                    return_pct=return_pct
+                )
+                trades.append(trade)
+                capital *= (1 + return_pct / 100)
+                position = 0
+                entry_price = 0.0
+                entry_date = None
+
+            # Update equity curve (one entry per input bar)
+            if position == 1 and entry_price > 0:
                 unrealized = (current['close'] - entry_price) / entry_price
-                equity.append(capital * (1 + unrealized))
+                equity[i] = capital * (1 + unrealized)
             else:
-                equity.append(capital)
-        
-        # Close any open position at the end
-        if position == 1:
-            final_price = data.iloc[-1]['close'] * (1 - self.commission)
-            final_date = data.index[-1]
-            pnl = final_price - entry_price
-            return_pct = (final_price - entry_price) / entry_price * 100
-            
-            trade = Trade(
-                entry_date=entry_date,
-                exit_date=final_date,
-                symbol=symbol,
-                side='long',
-                entry_price=entry_price,
-                exit_price=final_price,
-                quantity=1.0,
-                pnl=pnl,
-                return_pct=return_pct
-            )
-            trades.append(trade)
-            capital *= (1 + return_pct / 100)
+                equity[i] = capital
         
         result = BacktestResult(
             strategy_name=strategy.name,
-            start_date=data.index[0] if isinstance(data.index[0], datetime) else datetime.now(),
-            end_date=data.index[-1] if isinstance(data.index[-1], datetime) else datetime.now(),
+            start_date=start,
+            end_date=end,
             initial_capital=self.initial_capital,
             final_capital=capital,
             total_return=capital - self.initial_capital,
             total_return_pct=(capital - self.initial_capital) / self.initial_capital * 100,
             trades=trades,
-            equity_curve=pd.Series(equity, index=data.index[:len(equity)])
+            equity_curve=pd.Series(equity, index=data.index[: len(equity)])
         )
         
         return result

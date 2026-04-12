@@ -1,6 +1,6 @@
-# Algorithmic Trading Platform (Enhanced)
+# Algorithmic Trading Platform
 
-A production-ready Python-based algorithmic trading framework for 24/7 strategy development, backtesting, and live execution across multiple exchanges.
+A Python-based algorithmic trading framework for strategy development, backtesting, and execution research across multiple exchanges.
 
 ## Architecture
 
@@ -81,23 +81,29 @@ async def main():
 asyncio.run(main())
 ```
 
-### 2. Database Initialization
+### 2. List Available Strategies
 
 ```bash
-python main.py init-db
+python main.py list-strategies
 ```
 
 ### 3. Run a Backtest
 
 ```bash
-python main.py backtest --strategy sma_crossover --symbols AAPL MSFT --start 2023-01-01 --end 2024-01-01
+python main.py backtest --strategy sma_crossover --symbol BTCUSDT --start 2023-01-01 --end 2024-01-01
 ```
 
-### 4. Paper Trading (Binance Testnet)
+### 4. Run the Test Suite
 
 ```bash
-python main.py paper --strategy sma_crossover --symbols BTCUSDT --interval 1h
+pytest -q
 ```
+
+### 5. CI and Merge Protection
+
+- GitHub Actions CI runs on pull requests to `main`, on pushes to active development branches, and via manual dispatch.
+- The `required-checks` workflow status is configured as a required branch protection rule on `main`.
+- Pull requests to `main` cannot merge unless the CI matrix passes.
 
 ## Strategy Development
 
@@ -128,6 +134,21 @@ class MyStrategy(BaseAlgorithm):
 - **Circuit Breakers**: Halts trading automatically if drawdown or loss limits are breached.
 - **Encrypted Storage**: Recommended use of Secrets Manager for API keys (env var support built-in).
 - **Safe Execution**: All orders are validated against risk parameters before submission.
+
+## Development Notes
+
+- The lightweight CLI entrypoint lives in [`src/cli.py`](src/cli.py) and is exposed through `main.py`.
+- The risk-aware sample strategy lives in [`src/strategy/sma_crossover_risk.py`](src/strategy/sma_crossover_risk.py).
+- Local broker-facing test adapters live in [`src/broker/`](src/broker/).
+
+## Agent Instructions
+
+- Shared repository instructions live in [`AGENTS.md`](AGENTS.md).
+- Cross-agent shim files are provided for common tools:
+  - [`CODEX.md`](CODEX.md)
+  - [`CLAUDE.md`](CLAUDE.md)
+  - [`GEMINI.md`](GEMINI.md)
+- Each shim delegates back to `AGENTS.md` so the repo has a single instruction source of truth.
 
 ## Requirements
 
