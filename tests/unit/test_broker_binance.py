@@ -46,6 +46,8 @@ class TestBinanceBroker:
         broker.connect()
         
         assert broker._connected is True
+        mock_session_instance.get.assert_called_once()
+        assert "signature" in mock_session_instance.get.call_args.kwargs["params"]
     
     def test_disconnect(self, broker):
         """Test disconnection."""
@@ -161,6 +163,29 @@ class TestBinanceBroker:
         result = broker.cancel_order_with_symbol('123456', 'BTCUSDT')
         
         assert result is True
+
+    @patch('src.broker.binance.requests.Session')
+    def test_cancel_order_uses_cached_symbol(self, mock_session, broker):
+        """Test order cancellation uses tracked order symbol."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {}
+        mock_response.raise_for_status = MagicMock()
+
+        mock_session_instance = MagicMock()
+        mock_session_instance.delete.return_value = mock_response
+        mock_session.return_value = mock_session_instance
+        broker.session = mock_session_instance
+        broker._connected = True
+        broker._order_symbols["123456"] = "BTCUSDT"
+
+        result = broker.cancel_order("123456")
+
+        assert result is True
+
+    def test_cancel_order_requires_known_symbol(self, broker):
+        """Test cancel_order fails when order symbol is unknown."""
+        with pytest.raises(ValueError, match="symbol"):
+            broker.cancel_order("123456")
     
     @patch('src.broker.binance.requests.Session')
     def test_get_order(self, mock_session, broker):
@@ -187,6 +212,32 @@ class TestBinanceBroker:
         
         assert order['id'] == '123456'
         assert order['status'] == 'filled'
+
+    @patch('src.broker.binance.requests.Session')
+    def test_get_order_uses_cached_symbol(self, mock_session, broker):
+        """Test order status retrieval works with cached symbol."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            'orderId': 123456,
+            'status': 'FILLED',
+            'symbol': 'BTCUSDT',
+            'side': 'BUY',
+            'origQty': '0.001',
+            'executedQty': '0.001',
+            'avgPrice': '50000.0',
+        }
+        mock_response.raise_for_status = MagicMock()
+
+        mock_session_instance = MagicMock()
+        mock_session_instance.get.return_value = mock_response
+        mock_session.return_value = mock_session_instance
+        broker.session = mock_session_instance
+        broker._order_symbols["123456"] = "BTCUSDT"
+
+        order = broker.get_order('123456')
+
+        assert order['id'] == '123456'
+        assert order['symbol'] == 'BTCUSDT'
     
     def test_get_order_requires_symbol(self, broker):
         """Test that get_order requires symbol parameter."""
@@ -206,11 +257,16 @@ class TestBinanceBroker:
         }
         mock_response.raise_for_status = MagicMock()
         
-        mock_ticker = MagicMock()
-        mock_ticker.json.return_value = {'price': '50000.0'}
+        mock_btc_ticker = MagicMock()
+        mock_btc_ticker.json.return_value = {'price': '50000.0'}
+        mock_btc_ticker.raise_for_status = MagicMock()
+
+        mock_eth_ticker = MagicMock()
+        mock_eth_ticker.json.return_value = {'price': '3000.0'}
+        mock_eth_ticker.raise_for_status = MagicMock()
         
         mock_session_instance = MagicMock()
-        mock_session_instance.get.side_effect = [mock_response, mock_ticker]
+        mock_session_instance.get.side_effect = [mock_response, mock_btc_ticker, mock_eth_ticker]
         mock_session.return_value = mock_session_instance
         broker.session = mock_session_instance
         
@@ -220,3 +276,6 @@ class TestBinanceBroker:
         assert len(positions) == 2
         assert positions[0].symbol == 'BTC'
         assert positions[0].quantity == 0.5
+        assert positions[0].current_price == 50000.0
+        assert positions[1].symbol == 'ETH'
+        assert positions[1].current_price == 3000.0

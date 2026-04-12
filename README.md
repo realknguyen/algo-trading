@@ -141,6 +141,15 @@ class MyStrategy(BaseAlgorithm):
 - The risk-aware sample strategy lives in [`src/strategy/sma_crossover_risk.py`](src/strategy/sma_crossover_risk.py).
 - Local broker-facing test adapters live in [`src/broker/`](src/broker/).
 
+## Agent Instructions
+
+- Shared repository instructions live in [`AGENTS.md`](AGENTS.md).
+- Cross-agent shim files are provided for common tools:
+  - [`CODEX.md`](CODEX.md)
+  - [`CLAUDE.md`](CLAUDE.md)
+  - [`GEMINI.md`](GEMINI.md)
+- Each shim delegates back to `AGENTS.md` so the repo has a single instruction source of truth.
+
 ## Requirements
 
 - Python 3.10+

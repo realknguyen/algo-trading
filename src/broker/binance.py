@@ -23,6 +23,7 @@ class BinanceBroker(BaseBroker):
         self.testnet = testnet
         self.base_url = self.TESTNET_URL if testnet else self.BASE_URL
         self.session = None
+        self._order_symbols: dict[str, str] = {}
 
     def _get_session(self):
         if self.session is None:
@@ -41,7 +42,13 @@ class BinanceBroker(BaseBroker):
     def connect(self) -> None:
         self.session = requests.Session()
         self.session.headers.update({"X-MBX-APIKEY": self.api_key})
-        self.session.get(f"{self.base_url}/api/v3/account", timeout=10).raise_for_status()
+        params = {"timestamp": int(time.time() * 1000)}
+        params["signature"] = self._sign(params)
+        self.session.get(
+            f"{self.base_url}/api/v3/account",
+            params=params,
+            timeout=10,
+        ).raise_for_status()
         self._connected = True
 
     def disconnect(self) -> None:
@@ -94,8 +101,10 @@ class BinanceBroker(BaseBroker):
     def submit_order(self, order) -> dict:
         data = self._signed_request("POST", "/api/v3/order", self._build_order_params(order))
         status = str(data.get("status", "")).lower()
+        order_id = str(data.get("orderId"))
+        self._order_symbols[order_id] = data.get("symbol", order.symbol)
         return {
-            "id": str(data.get("orderId")),
+            "id": order_id,
             "status": status,
             "symbol": data.get("symbol", order.symbol),
             "side": data.get("side", order.side.value).lower(),
@@ -105,29 +114,36 @@ class BinanceBroker(BaseBroker):
         }
 
     def cancel_order(self, order_id: str) -> bool:
-        # Symbol is required for spot endpoint; defer to symbol-specific cancel in tests.
-        if not self._connected:
-            raise RuntimeError("Broker is not connected")
-        response = self._get_session().delete(f"{self.base_url}/api/v3/order")
-        response.raise_for_status()
+        symbol = self._order_symbols.get(order_id)
+        if symbol is None:
+            raise ValueError("symbol is required for Binance cancel_order when order is unknown")
+        self._signed_request(
+            "DELETE",
+            "/api/v3/order",
+            {"orderId": order_id, "symbol": symbol},
+        )
         return True
 
     def cancel_order_with_symbol(self, order_id: str, symbol: str) -> bool:
-        self._get_session().delete(
-            f"{self.base_url}/api/v3/order",
-            params={"orderId": order_id, "symbol": symbol, "timestamp": int(time.time() * 1000)},
-        ).raise_for_status()
+        self._order_symbols[order_id] = symbol
+        self._signed_request(
+            "DELETE",
+            "/api/v3/order",
+            {"orderId": order_id, "symbol": symbol},
+        )
         return True
 
     def get_order(self, order_id: str, symbol: str | None = None) -> dict:
+        symbol = symbol or self._order_symbols.get(order_id)
         if symbol is None:
-            raise ValueError("symbol is required for Binance get_order")
+            raise ValueError("symbol is required for Binance get_order when order is unknown")
         data = self._signed_request(
             "GET",
             "/api/v3/order",
             {"orderId": order_id, "symbol": symbol},
         )
         status = str(data.get("status", "")).lower()
+        self._order_symbols[str(data.get("orderId", order_id))] = data.get("symbol", symbol)
         return {
             "id": str(data.get("orderId")),
             "status": status,
@@ -144,7 +160,6 @@ class BinanceBroker(BaseBroker):
         positions: list[Position] = []
 
         quote_assets = {"USDT", "BUSD", "FDUSD", "TUSD", "USDC", "DAI", "USDP"}
-        ticker_price = None
 
         for balance in balances:
             asset = balance.get("asset")
@@ -154,16 +169,13 @@ class BinanceBroker(BaseBroker):
             if not asset or asset in quote_assets or total <= 0:
                 continue
 
-            if ticker_price is None:
-                ticker = self._get_session().get(
-                    f"{self.base_url}/api/v3/ticker/price",
-                    params={"symbol": f"{asset}USDT"},
-                )
-                ticker.raise_for_status()
-                ticker_json = ticker.json()
-                ticker_price = float(ticker_json.get("price", 0.0))
-
-            current_price = float(ticker_price or 0.0)
+            ticker = self._get_session().get(
+                f"{self.base_url}/api/v3/ticker/price",
+                params={"symbol": f"{asset}USDT"},
+            )
+            ticker.raise_for_status()
+            ticker_json = ticker.json()
+            current_price = float(ticker_json.get("price", 0.0))
             positions.append(
                 Position(
                     symbol=asset,
