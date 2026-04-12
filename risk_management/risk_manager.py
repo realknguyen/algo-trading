@@ -7,7 +7,7 @@ from typing import Optional, Dict, Any, List, Callable
 from datetime import datetime, timedelta
 
 from adapters.base_adapter import Order, OrderSide, Position
-from logging.log_config import TradingLogger
+from log_config import TradingLogger
 
 
 class RiskLevel(Enum):

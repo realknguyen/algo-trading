@@ -81,3 +81,22 @@ class BaseBroker(ABC):
     def get_order(self, order_id: str) -> Dict[str, Any]:
         """Get order status."""
         pass
+
+
+try:
+    from .alpaca import AlpacaBroker
+    from .binance import BinanceBroker
+except Exception:  # pragma: no cover - optional import fallback
+    AlpacaBroker = None
+    BinanceBroker = None
+
+
+__all__ = [
+    "OrderType",
+    "OrderSide",
+    "Order",
+    "Position",
+    "BaseBroker",
+    "AlpacaBroker",
+    "BinanceBroker",
+]

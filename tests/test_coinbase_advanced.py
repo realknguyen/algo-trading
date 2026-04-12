@@ -13,6 +13,7 @@ from adapters.coinbase import (
     CoinbaseAdapter,
     Order,
     OrderSide,
+    OrderStatus,
     OrderType,
     TimeInForce,
 )

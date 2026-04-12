@@ -2,9 +2,8 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
 import pandas as pd
-
 
 @dataclass
 class Signal:
@@ -43,3 +42,42 @@ class BaseStrategy(ABC):
     def set_parameters(self, params: Dict[str, Any]) -> None:
         """Update strategy parameters."""
         self.params.update(params)
+
+
+def list_strategies() -> list[str]:
+    """Return registered strategy names."""
+    return sorted(list(_STRATEGY_REGISTRY.keys()))
+
+
+def get_strategy(name: str):
+    """Get a strategy class by name (case-insensitive)."""
+    if not name:
+        return None
+    return _STRATEGY_REGISTRY.get(name.lower())
+
+
+def create_strategy(name: str, params: Optional[Dict[str, Any]] = None):
+    """Create strategy instance from registry by name."""
+    strategy_cls = get_strategy(name)
+    if strategy_cls is None:
+        available = ", ".join(list_strategies())
+        raise ValueError(f"Unknown strategy '{name}'. Available: {available}")
+    return strategy_cls(params)
+
+
+_STRATEGY_REGISTRY = {
+}
+
+
+def _import_strategy(module_name: str, class_name: str):
+    module = __import__(f"{__name__}.{module_name}", fromlist=[class_name])
+    return getattr(module, class_name)
+
+
+def _register_strategy(name: str, module_name: str, class_name: str) -> None:
+    if name not in _STRATEGY_REGISTRY:
+        _STRATEGY_REGISTRY[name] = _import_strategy(module_name, class_name)
+
+
+_register_strategy("sma_crossover", "sma_crossover", "SmaCrossoverStrategy")
+_register_strategy("sma_crossover_risk", "sma_crossover_risk", "SmaCrossoverRiskStrategy")

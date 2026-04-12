@@ -12,7 +12,7 @@ import numpy as np
 
 from algorithms.base_algorithm import BaseAlgorithm, AlgorithmConfig, Signal, AlgorithmState
 from adapters.base_adapter import Order, OrderSide, OrderType
-from logging.log_config import TradingLogger
+from log_config import TradingLogger
 
 
 class Resolution(Enum):

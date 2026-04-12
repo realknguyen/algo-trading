@@ -13,7 +13,7 @@ import pandas as pd
 from adapters.base_adapter import Order, OrderSide, OrderType, Ticker
 from order_management.order_manager import OrderRequest, OrderManager
 from risk_management.risk_manager import RiskManager
-from logging.log_config import TradingLogger
+from log_config import TradingLogger
 
 
 class AlgorithmState(Enum):

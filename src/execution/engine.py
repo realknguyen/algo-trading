@@ -66,6 +66,8 @@ class ExecutionEngine:
         
         try:
             status = self.broker.get_order(order_id)
+            if not isinstance(status, dict):
+                status = {}
             # Convert to ExecutionReport
             report = ExecutionReport(
                 order_id=order_id,
@@ -74,7 +76,7 @@ class ExecutionEngine:
                 quantity=status.get('qty', 0),
                 filled_quantity=status.get('filled_qty', 0),
                 avg_price=status.get('avg_price', 0),
-                status=OrderStatus(status.get('status', 'pending')),
+                status=self._normalize_status(str(status.get('status', 'pending'))),
                 timestamp=datetime.now()
             )
             
@@ -87,3 +89,11 @@ class ExecutionEngine:
         except Exception as e:
             print(f"Failed to update order {order_id}: {e}")
             return None
+
+    @staticmethod
+    def _normalize_status(value: str) -> OrderStatus:
+        """Normalize a status value into a valid OrderStatus."""
+        try:
+            return OrderStatus(value)
+        except ValueError:
+            return OrderStatus.PENDING

@@ -13,7 +13,7 @@ import numpy as np
 from algorithms.base_algorithm import BaseAlgorithm, Signal
 from adapters.base_adapter import Order, OrderSide, OrderStatus
 from risk_management.risk_manager import RiskManager, RiskLimits
-from logging.log_config import TradingLogger
+from log_config import TradingLogger
 
 
 class BacktestStatus(Enum):

@@ -1,10 +1,51 @@
 """pytest configuration and shared fixtures."""
 
-import pytest
-import pandas as pd
-import numpy as np
+import asyncio
+import inspect
 from datetime import datetime, timedelta
 from unittest.mock import Mock
+
+import numpy as np
+import pandas as pd
+import pytest
+
+
+def pytest_configure(config):
+    """Register local markers used by the test suite."""
+    config.addinivalue_line("markers", "asyncio: mark test as asyncio-driven")
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_pyfunc_call(pyfuncitem):
+    """Run asyncio-marked coroutine tests without requiring pytest-asyncio."""
+    if "asyncio" not in pyfuncitem.keywords:
+        return None
+
+    test_func = pyfuncitem.obj
+    if not inspect.iscoroutinefunction(test_func):
+        return None
+
+    loop = pyfuncitem.funcargs.get("event_loop")
+    if loop is None:
+        loop = asyncio.new_event_loop()
+        try:
+            asyncio.set_event_loop(loop)
+            kwargs = {
+                name: pyfuncitem.funcargs[name]
+                for name in pyfuncitem._fixtureinfo.argnames
+            }
+            loop.run_until_complete(test_func(**kwargs))
+        finally:
+            loop.close()
+            asyncio.set_event_loop(None)
+        return True
+
+    kwargs = {
+        name: pyfuncitem.funcargs[name]
+        for name in pyfuncitem._fixtureinfo.argnames
+    }
+    loop.run_until_complete(test_func(**kwargs))
+    return True
 
 
 @pytest.fixture
