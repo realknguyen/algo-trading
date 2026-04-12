@@ -28,11 +28,28 @@ dependencies = [
     "numpy>=1.24.0",
     "yfinance>=0.2.28",
     "backtrader>=1.9.78.123",
+    "httpx>=0.25.0",
+    "aiohttp>=3.9.0",
+    "aiolimiter>=1.1.0",
+    "cryptography>=42.0.0",
+    "PyJWT>=2.8.0",
+    "sqlalchemy>=2.0.0",
+    "asyncpg>=0.29.0",
+    "alembic>=1.12.0",
+    "psycopg2-binary>=2.9.9",
+    "loguru>=0.7.0",
     "alpaca-trade-api>=3.0.0",
     "ib-insync>=0.9.70",
+    "python-binance>=1.0.19",
+    "krakenex>=2.1.0",
+    "pykrakenapi>=0.3.2",
     "requests>=2.31.0",
     "python-dotenv>=1.0.0",
     "pyyaml>=6.0.1",
+    "websockets>=10.4",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "typing-extensions>=4.8.0",
     "matplotlib>=3.7.0",
     "plotly>=5.15.0",
 ]
@@ -41,6 +58,7 @@ dependencies = [
 dev = [
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.21.0",
     "black>=23.0.0",
     "mypy>=1.5.0",
     "flake8>=6.1.0",
@@ -49,11 +67,24 @@ dev = [
 ]
 
 [project.scripts]
-algo-trade = "src.cli:main"
+algo-trade = "main:main"
+
+[tool.setuptools]
+py-modules = ["main"]
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["src*"]
+include = [
+    "src*",
+    "adapters*",
+    "algorithms*",
+    "backtesting*",
+    "config*",
+    "database*",
+    "order_management*",
+    "risk_management*",
+    "trading_logging*",
+]
 
 [tool.black]
 line-length = 100
@@ -64,9 +95,3 @@ python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = "test_*.py"
-python_classes = "Test*"
-python_functions = "test_*"
