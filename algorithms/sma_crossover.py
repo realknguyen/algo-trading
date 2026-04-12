@@ -6,7 +6,8 @@ from decimal import Decimal
 import pandas as pd
 import numpy as np
 
-from algorithms.base_algorithm import BaseAlgorithm, AlgorithmConfig, Signal
+from algorithms.base_algorithm import AlgorithmConfig, AlgorithmState, BaseAlgorithm, Signal
+from algorithms.quantconnect_adapter import QCAlgorithmInterface, Slice
 from adapters.base_adapter import Order, OrderSide, OrderType
 
 
