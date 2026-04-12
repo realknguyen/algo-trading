@@ -3,17 +3,26 @@
 ## System Overview
 This repository contains a high-performance algorithmic trading platform. As an agent, you are responsible for maintaining strategy integrity and ensuring safe execution.
 
+## Working Norms
+
+- Prefer simple, production-friendly fixes over broad refactors.
+- Read the nearest tests and command entrypoints before changing behavior.
+- Keep changes aligned with the current executable paths in `main.py` and `src/cli.py`.
+- Run the smallest relevant verification step after code changes and report exactly what was run.
+
 ## Core Directives
 
 ### 1. Safety First
 - **NEVER** modify `risk_management/` logic without explicit human approval.
 - **ALWAYS** verify `can_trade()` status before suggesting order execution.
 - **CIRCUIT BREAKERS** are final. If they trigger, analyze the root cause before requesting a reset.
+- Treat risk semantics consistently across `risk_management/`, `src/risk/`, tests, and docs.
 
 ### 2. Strategy Development
 - When implementing new strategies, use `algorithms/base_algorithm.py` as the template.
 - All new strategies **MUST** include a corresponding test in `tests/`.
 - Prefer `QuantConnectAdapter` for strategies ported from the QC ecosystem.
+- For strategies used by the lightweight CLI, register them in `src/strategy/__init__.py`.
 
 ### 3. Database Integrity
 - Use SQLAlchemy ORM for all database interactions.
@@ -32,10 +41,17 @@ This repository contains a high-performance algorithmic trading platform. As an 
 - Add new settings to `config/settings.py` using Pydantic fields.
 - Ensure appropriate env prefixes are used (`BINANCE_`, `RISK_`, etc.).
 
+### Updating Tooling
+- Keep `.github/workflows/ci.yml` passing on Python 3.10 and 3.11.
+- Do not add commands to the README that are not supported by `main.py`.
+- Ignore generated coverage and test artifacts in `.gitignore`.
+
 ## Troubleshooting
 - Check `logs/trading.log` for structured events.
 - Audit `system_logs` table in PostgreSQL for persistent error history.
-- Use `python main.py init-db` to repair or initialize the schema.
+- Use `python main.py list-strategies` to verify CLI registration.
+- Use `python main.py backtest --help` to verify the current CLI surface.
+- Use `pytest -q` for the full local verification path.
 
 ## Implementation Reference
 
@@ -80,15 +96,32 @@ if risk.validate_order(order):
     await oms.submit_order(order)
 ```
 
+#### 3. Lightweight Local CLI
+The maintained local CLI surface is:
+
+```bash
+python main.py list-strategies
+python main.py backtest --strategy sma_crossover_risk --symbol BTCUSDT --start 2024-01-01 --end 2024-03-01
+```
+
+#### 4. CI Expectations
+- GitHub Actions workflow: `.github/workflows/ci.yml`
+- Required branch protection gate on `main`: `required-checks`
+- Manual execution is supported via `workflow_dispatch`
+
 ### File Structure Overview
 ```text
+├── .github/workflows/   # CI workflow definitions
 ├── adapters/            # Core exchange implementations
 ├── src/
 │   ├── adapters/        # Enhanced/New adapters and support logic
+│   ├── broker/          # Local synchronous broker adapters used by tests/CLI flows
 │   ├── rate_limiter/    # API client and throttling
 │   ├── metrics/         # Prometheus monitoring
 │   ├── tracing/         # OpenTelemetry tracing
-│   └── execution/       # Order execution logic
+│   ├── execution/       # Order execution logic
+│   ├── risk/            # Lightweight risk module used by current tests/CLI
+│   └── strategy/        # Lightweight strategy registry and sample strategies
 ├── database/            # SQLA models and migrations
 ├── order_management/    # OMS core
 └── risk_management/     # Risk rules and sizing

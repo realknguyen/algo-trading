@@ -152,13 +152,13 @@
 | 11.1 | Set up pytest configuration | COMPLETE | 2025-01-10 | `pytest.ini` | Asyncio configuration |
 | 11.2 | Implement test data factories | COMPLETE | 2025-01-11 | `tests/conftest.py` | Fixtures and factories |
 | 11.3 | Build unit test suite for API Client | COMPLETE | 2025-01-12 | `src/tracing/tests/` | Integrated with tracing |
-| 11.4 | Build unit test suite for OMS | NOT_STARTED | - | - | |
-| 11.5 | Build unit test suite for Algorithms | NOT_STARTED | - | - | |
-| 11.6 | Build unit test suite for Risk | NOT_STARTED | - | - | |
-| 11.7 | Implement integration tests | NOT_STARTED | - | - | |
+| 11.4 | Build unit test suite for OMS | COMPLETE | 2026-04-12 | `tests/unit/test_execution.py` | Execution engine and order lifecycle coverage |
+| 11.5 | Build unit test suite for Algorithms | COMPLETE | 2026-04-12 | `tests/test_strategy.py`, `tests/unit/test_strategy_sma_crossover_risk.py` | Covers base SMA strategy and risk-aware extension |
+| 11.6 | Build unit test suite for Risk | COMPLETE | 2026-04-12 | `tests/unit/test_risk.py` | Drawdown, sizing, exposure, and circuit-breaker coverage |
+| 11.7 | Implement integration tests | COMPLETE | 2026-04-12 | `tests/integration/` | Backtest and workflow integration coverage |
 | 11.8 | Create mock exchange servers | NOT_STARTED | - | - | |
-| 11.9 | Build end-to-end trading tests | NOT_STARTED | - | - | |
-| 11.10 | Set up CI/CD pipeline | NOT_STARTED | - | - | |
-| 11.11 | Implement code coverage | NOT_STARTED | - | - | |
+| 11.9 | Build end-to-end trading tests | COMPLETE | 2026-04-12 | `tests/integration/test_end_to_end.py` | End-to-end workflow validation with mock broker |
+| 11.10 | Set up CI/CD pipeline | COMPLETE | 2026-04-12 | `.github/workflows/ci.yml` | PR, push, and manual GitHub Actions workflow with required checks |
+| 11.11 | Implement code coverage | COMPLETE | 2026-04-12 | `.github/workflows/ci.yml` | Coverage XML generated and uploaded as CI artifacts |
 | 11.12 | Create load testing suite | NOT_STARTED | - | - | |
 | 11.13 | Build property-based tests | NOT_STARTED | - | - | |

@@ -45,9 +45,13 @@ venv.bak/
 # Testing
 .pytest_cache/
 .coverage
+.coverage.*
+coverage.xml
+coverage-*.xml
 htmlcov/
 .tox/
 .nox/
+.mypy_cache/
 
 # Environment variables
 .env
@@ -74,6 +78,7 @@ logs/
 results/
 *.png
 *.pdf
+results/*.json
 
 # Broker-specific files
 *.auth
