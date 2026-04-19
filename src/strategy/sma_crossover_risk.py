@@ -84,7 +84,9 @@ class SmaCrossoverRiskStrategy(BaseStrategy):
         return Signal(
             symbol=current.get("symbol", "UNKNOWN"),
             action=action,
-            timestamp=current.name if isinstance(current.name, pd.Timestamp) else pd.Timestamp.now(),
+            timestamp=(
+                current.name if isinstance(current.name, pd.Timestamp) else pd.Timestamp.now()
+            ),
             price=close_price,
             confidence=confidence,
             metadata={

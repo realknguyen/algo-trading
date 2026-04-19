@@ -52,6 +52,7 @@ htmlcov/
 .tox/
 .nox/
 .mypy_cache/
+.pre-commit-cache/
 
 # Environment variables
 .env

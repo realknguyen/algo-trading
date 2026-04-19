@@ -40,43 +40,43 @@ class Position:
 
 class BaseBroker(ABC):
     """Abstract base class for broker implementations."""
-    
+
     def __init__(self, api_key: str, api_secret: str, paper: bool = True):
         self.api_key = api_key
         self.api_secret = api_secret
         self.paper = paper
         self._connected = False
-    
+
     @abstractmethod
     def connect(self) -> None:
         """Connect to broker API."""
         pass
-    
+
     @abstractmethod
     def disconnect(self) -> None:
         """Disconnect from broker API."""
         pass
-    
+
     @abstractmethod
     def get_account(self) -> Dict[str, Any]:
         """Get account information."""
         pass
-    
+
     @abstractmethod
     def get_positions(self) -> list[Position]:
         """Get current positions."""
         pass
-    
+
     @abstractmethod
     def submit_order(self, order: Order) -> Dict[str, Any]:
         """Submit an order."""
         pass
-    
+
     @abstractmethod
     def cancel_order(self, order_id: str) -> bool:
         """Cancel an order."""
         pass
-    
+
     @abstractmethod
     def get_order(self, order_id: str) -> Dict[str, Any]:
         """Get order status."""

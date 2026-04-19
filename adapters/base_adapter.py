@@ -19,6 +19,7 @@ from log_config import TradingLogger
 
 class OrderType(str, Enum):
     """Order type enumeration."""
+
     MARKET = "market"
     LIMIT = "limit"
     STOP_LOSS = "stop_loss"
@@ -29,12 +30,14 @@ class OrderType(str, Enum):
 
 class OrderSide(str, Enum):
     """Order side enumeration."""
+
     BUY = "buy"
     SELL = "sell"
 
 
 class OrderStatus(str, Enum):
     """Order status enumeration."""
+
     PENDING = "pending"
     OPEN = "open"
     PARTIALLY_FILLED = "partially_filled"
@@ -46,6 +49,7 @@ class OrderStatus(str, Enum):
 
 class TimeInForce(str, Enum):
     """Time in force enumeration."""
+
     GTC = "GTC"  # Good Till Cancelled
     IOC = "IOC"  # Immediate or Cancel
     FOK = "FOK"  # Fill or Kill
@@ -55,6 +59,7 @@ class TimeInForce(str, Enum):
 @dataclass
 class Order:
     """Order dataclass."""
+
     symbol: str
     side: OrderSide
     order_type: OrderType
@@ -63,7 +68,7 @@ class Order:
     stop_price: Optional[Decimal] = None
     time_in_force: TimeInForce = TimeInForce.GTC
     client_order_id: Optional[str] = None
-    
+
     # Response fields (filled by exchange)
     order_id: Optional[str] = None
     status: OrderStatus = OrderStatus.PENDING
@@ -76,6 +81,7 @@ class Order:
 @dataclass
 class Position:
     """Position dataclass."""
+
     symbol: str
     quantity: Decimal
     avg_entry_price: Decimal
@@ -87,6 +93,7 @@ class Position:
 @dataclass
 class Ticker:
     """Market ticker dataclass."""
+
     symbol: str
     bid: Decimal
     ask: Decimal
@@ -98,6 +105,7 @@ class Ticker:
 @dataclass
 class Balance:
     """Account balance dataclass."""
+
     asset: str
     free: Decimal
     locked: Decimal
@@ -106,14 +114,14 @@ class Balance:
 
 class BaseExchangeAdapter(ABC):
     """Abstract base class for exchange adapters.
-    
+
     Provides:
     - Async HTTP client with connection pooling
     - Rate limiting per exchange
     - Authentication handling
     - Retry logic with exponential backoff
     """
-    
+
     def __init__(
         self,
         api_key: str,
@@ -121,46 +129,39 @@ class BaseExchangeAdapter(ABC):
         base_url: str,
         rate_limit_per_second: float = 10.0,
         sandbox: bool = True,
-        **kwargs
+        **kwargs,
     ):
         self.api_key = api_key
         self.api_secret = api_secret
-        self.base_url = base_url.rstrip('/')
+        self.base_url = base_url.rstrip("/")
         self.sandbox = sandbox
         self.logger = TradingLogger(self.__class__.__name__)
-        
+
         # Rate limiter
         self.rate_limiter = AsyncLimiter(rate_limit_per_second, time_period=1.0)
-        
+
         # HTTP client
-        limits = httpx.Limits(
-            max_connections=100,
-            max_keepalive_connections=20
-        )
+        limits = httpx.Limits(max_connections=100, max_keepalive_connections=20)
         timeout = httpx.Timeout(30.0, connect=10.0)
-        
-        self.client = httpx.AsyncClient(
-            limits=limits,
-            timeout=timeout,
-            base_url=self.base_url
-        )
-        
+
+        self.client = httpx.AsyncClient(limits=limits, timeout=timeout, base_url=self.base_url)
+
         # Connection status
         self._connected = False
-        
+
         # WebSocket (optional)
-        self.ws_url = kwargs.get('ws_url')
+        self.ws_url = kwargs.get("ws_url")
         self.ws_client = None
-        
+
     async def __aenter__(self):
         """Async context manager entry."""
         await self.connect()
         return self
-    
+
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit."""
         await self.disconnect()
-    
+
     async def connect(self) -> bool:
         """Connect to exchange and validate credentials."""
         try:
@@ -171,23 +172,23 @@ class BaseExchangeAdapter(ABC):
         except Exception as e:
             self.logger.error("connection", f"Failed to connect: {e}")
             return False
-    
+
     async def disconnect(self) -> None:
         """Disconnect from exchange."""
         await self.client.aclose()
         self._connected = False
         self.logger.logger.info(f"Disconnected from {self.__class__.__name__}")
-    
+
     @abstractmethod
     async def _authenticate(self) -> None:
         """Authenticate with the exchange."""
         pass
-    
+
     @abstractmethod
     def _sign_request(self, method: str, endpoint: str, params: Dict[str, Any]) -> Dict[str, str]:
         """Sign request with API credentials."""
         pass
-    
+
     async def _make_request(
         self,
         method: str,
@@ -195,10 +196,10 @@ class BaseExchangeAdapter(ABC):
         params: Optional[Dict[str, Any]] = None,
         data: Optional[Dict[str, Any]] = None,
         signed: bool = False,
-        retries: int = 3
+        retries: int = 3,
     ) -> Dict[str, Any]:
         """Make HTTP request with rate limiting and retry logic.
-        
+
         Args:
             method: HTTP method (GET, POST, etc.)
             endpoint: API endpoint
@@ -206,17 +207,17 @@ class BaseExchangeAdapter(ABC):
             data: Request body data
             signed: Whether to sign the request
             retries: Number of retries on failure
-            
+
         Returns:
             JSON response as dictionary
         """
         async with self.rate_limiter:
             url = f"{self.base_url}{endpoint}"
             headers = {}
-            
+
             if signed:
                 headers = self._sign_request(method, endpoint, params or {})
-            
+
             for attempt in range(retries):
                 try:
                     if method.upper() == "GET":
@@ -227,13 +228,13 @@ class BaseExchangeAdapter(ABC):
                         response = await self.client.delete(url, params=params, headers=headers)
                     else:
                         raise ValueError(f"Unsupported HTTP method: {method}")
-                    
+
                     response.raise_for_status()
                     return response.json()
-                    
+
                 except httpx.HTTPStatusError as e:
                     if e.response.status_code == 429:  # Rate limited
-                        wait_time = 2 ** attempt
+                        wait_time = 2**attempt
                         self.logger.logger.warning(f"Rate limited, waiting {wait_time}s...")
                         await asyncio.sleep(wait_time)
                     elif e.response.status_code >= 500:  # Server error, retry
@@ -246,56 +247,56 @@ class BaseExchangeAdapter(ABC):
                         await asyncio.sleep(1)
                         continue
                     raise
-            
+
             raise Exception(f"Request failed after {retries} attempts")
-    
+
     # Abstract methods that each exchange must implement
-    
+
     @abstractmethod
     async def get_account(self) -> Dict[str, Any]:
         """Get account information."""
         pass
-    
+
     @abstractmethod
     async def get_balances(self) -> List[Balance]:
         """Get account balances."""
         pass
-    
+
     @abstractmethod
     async def get_ticker(self, symbol: str) -> Ticker:
         """Get current ticker for symbol."""
         pass
-    
+
     @abstractmethod
     async def get_orderbook(self, symbol: str, limit: int = 100) -> Dict[str, Any]:
         """Get order book for symbol."""
         pass
-    
+
     @abstractmethod
     async def place_order(self, order: Order) -> Order:
         """Place a new order."""
         pass
-    
+
     @abstractmethod
     async def cancel_order(self, symbol: str, order_id: str) -> bool:
         """Cancel an existing order."""
         pass
-    
+
     @abstractmethod
     async def get_order(self, symbol: str, order_id: str) -> Order:
         """Get order status."""
         pass
-    
+
     @abstractmethod
     async def get_open_orders(self, symbol: Optional[str] = None) -> List[Order]:
         """Get all open orders."""
         pass
-    
+
     @abstractmethod
     async def get_positions(self) -> List[Position]:
         """Get current positions."""
         pass
-    
+
     @abstractmethod
     async def get_historical_candles(
         self,
@@ -303,14 +304,14 @@ class BaseExchangeAdapter(ABC):
         interval: str,
         start_time: Optional[int] = None,
         end_time: Optional[int] = None,
-        limit: int = 500
+        limit: int = 500,
     ) -> List[Dict[str, Any]]:
         """Get historical OHLCV data."""
         pass
-    
+
     async def subscribe_ticker(self, symbol: str, callback: Callable) -> None:
         """Subscribe to real-time ticker updates via WebSocket.
-        
+
         Args:
             symbol: Trading symbol
             callback: Function to call with ticker updates
@@ -320,19 +321,23 @@ class BaseExchangeAdapter(ABC):
 
 class ExchangeError(Exception):
     """Base exception for exchange errors."""
+
     pass
 
 
 class AuthenticationError(ExchangeError):
     """Authentication failed."""
+
     pass
 
 
 class InsufficientFundsError(ExchangeError):
     """Insufficient funds for operation."""
+
     pass
 
 
 class InvalidSymbolError(ExchangeError):
     """Invalid trading symbol."""
+
     pass

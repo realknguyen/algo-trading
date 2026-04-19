@@ -1,19 +1,29 @@
 # Algo Trading
 
-Python trading workspace with two actively used codepaths:
+Python trading workspace with two connected layers:
 
-- A top-level async runtime in `adapters/`, `algorithms/`, `order_management/`, `risk_management/`, `backtesting/`, and `database/`.
-- A lightweight compatibility/test harness in `src/` used by the current unit and integration suite.
+- A lightweight CLI/backtest surface under `src/`
+- A broader async trading stack under `adapters/`, `algorithms/`, `order_management/`, `risk_management/`, `backtesting/`, and `database/`
 
-The repository is now wired so both surfaces import cleanly, the console entry point is valid, and the default test suite passes.
+The shipped CLI now bridges both surfaces instead of pretending they are unrelated.
 
-## Current Status
+## Current CLI Surface
 
-- `pytest -q` passes locally in this repository.
-- `algo-trade` now resolves to `main:main`.
-- Structured logging lives in `trading_logging/`.
-- `paper` mode is scaffolded but still simplified.
-- `live` mode is intentionally not implemented beyond a confirmation guard.
+The installed entry point is `algo-trade = "main:main"`, which supports:
+
+- `list-strategies`
+- `backtest`
+- `init-db`
+- `paper`
+- `live`
+
+## Status
+
+- `pytest -q` passes locally.
+- Database initialization is executable from the CLI.
+- `paper` and `live` are safe-by-default polling runners that bridge into the top-level async stack.
+- `paper` and `live` run in signal-only dry-run mode unless `--execute-orders` is supplied.
+- Live order execution requires explicit `--confirm-live` and valid exchange credentials.
 
 ## Install
 
@@ -24,82 +34,102 @@ pip install -e .
 pip install -e ".[dev]"
 ```
 
-If you prefer a flat requirements install:
+## Quickstart
+
+List strategies:
 
 ```bash
-pip install -r requirements.txt
+python main.py list-strategies
 ```
 
-## Verification
+Run a lightweight backtest:
 
 ```bash
-pytest -q
+python main.py backtest \
+  --strategy sma_crossover_risk \
+  --symbol BTCUSDT \
+  --start 2024-01-01 \
+  --end 2024-03-01
 ```
 
-## CLI
-
-The CLI is available through either `python main.py` or the installed `algo-trade` entry point.
-
-### Backtest
+Initialize the database schema:
 
 ```bash
-algo-trade backtest \
-  --strategy sma_crossover \
-  --symbols AAPL MSFT \
-  --start 2023-01-01 \
-  --end 2024-01-01
+python main.py init-db
 ```
 
-### Paper Trading
+Run the top-level async runtime in paper-mode dry-run:
 
 ```bash
-algo-trade paper \
-  --strategy sma_crossover \
+python main.py paper \
+  --exchange binance \
+  --symbols BTCUSDT ETHUSDT \
+  --interval 1h \
+  --iterations 3 \
+  --poll-seconds 30
+```
+
+Run the same runtime against live market endpoints without placing orders:
+
+```bash
+python main.py live \
+  --exchange binance \
   --symbols BTCUSDT \
-  --interval 1h
+  --interval 1h \
+  --iterations 1
 ```
 
-Paper mode currently connects, builds the runtime objects, and enters a placeholder loop. It is useful for integration work, but it is not yet a complete unattended paper-trading engine.
-
-### Live Trading
+Submit live orders only when you explicitly intend to:
 
 ```bash
-algo-trade live --strategy sma_crossover --symbols BTCUSDT
+python main.py live \
+  --exchange binance \
+  --symbols BTCUSDT \
+  --execute-orders \
+  --confirm-live
 ```
 
-Live mode stops after an explicit confirmation prompt and currently logs that the implementation is not finished.
+## Developer Workflow
 
-### Database Initialization
+Common local commands:
 
 ```bash
-algo-trade init-db
+make compile
+make smoke
+make test
+make verify
 ```
+
+`make smoke` checks the shipped CLI contract, including database init and runtime help surfaces.
 
 ## Repository Map
 
 ```text
 .
-├── adapters/           # Async exchange adapters used by the top-level runtime
-├── algorithms/         # Top-level algorithm framework and QC adapter support
+├── adapters/           # Top-level async exchange adapters
+├── algorithms/         # Top-level async strategy framework
 ├── backtesting/        # Top-level async backtesting engine
 ├── config/             # Pydantic settings and example config
-├── database/           # SQLAlchemy models and migrations
-├── docs/               # Project documentation
+├── database/           # SQLAlchemy models and Alembic wiring
+├── docs/               # Architecture and production-readiness docs
 ├── order_management/   # Top-level OMS
 ├── risk_management/    # Top-level risk engine
-├── src/                # Lightweight compatibility/test harness
-├── tests/              # Unit and integration suite
-└── trading_logging/    # Shared logging helpers
+├── src/                # Lightweight CLI/backtest surface plus runtime bridges
+├── tests/              # Unit and integration tests
+└── trading_logging/    # Shared logging bootstrap and redaction helpers
 ```
-
-## Development Guidance
-
-- Prefer the top-level async runtime for new production-facing work.
-- Keep the `src/` compatibility layer green until the repo is consolidated onto one public runtime surface.
-- Do not modify `risk_management/` rules casually; this repo treats risk logic as protected behavior.
 
 ## Safety Notes
 
-- Rate limits and circuit-breaker concepts exist in the codebase, but you should still treat all exchange integrations as requiring sandbox verification before real capital is involved.
-- The repo contains exchange adapters and execution code. That does not mean every path has been validated end to end against a live venue.
-- Trading software can lose money quickly. Verify environment config, adapter behavior, and order routing in sandbox/testnet before using any real credentials.
+- Do not treat this repository as blanket approval for unattended live trading.
+- `live` is now executable, but real order placement remains explicitly guarded.
+- Validate credentials, adapter behavior, and venue-specific semantics in sandbox/testnet before real capital use.
+- `risk_management/` is protected behavior and should only be changed deliberately.
+
+## Further Reading
+
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- [docs/OVERVIEW.md](docs/OVERVIEW.md)
+- [docs/PRODUCTION_READINESS.md](docs/PRODUCTION_READINESS.md)
+- [CONTRIBUTING.md](CONTRIBUTING.md)
+- [SECURITY.md](SECURITY.md)

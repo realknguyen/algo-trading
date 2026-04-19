@@ -10,14 +10,14 @@ Provides end-to-end request tracking across async boundaries with:
 
 Quick Start:
     from tracing import ContextManager, get_logger
-    
+
     # Create context
     ctx = ContextManager.create_root()
-    
+
     # Log with automatic context injection
     logger = get_logger("myapp")
     logger.info("Request processed")
-    
+
     # HTTP client with auto-tracing
     from tracing.http import TracedHTTPClient
     async with TracedHTTPClient() as client:
@@ -71,7 +71,6 @@ __all__ = [
     "RequestContext",
     "ensure_context",
     "get_current_context",
-    
     # Generator
     "IDFormatter",
     "RequestIDGenerator",
@@ -79,7 +78,6 @@ __all__ = [
     "generate_request_id",
     "generate_span_id",
     "generate_trace_id",
-    
     # Logger
     "BoundContextualLogger",
     "ContextualLogger",
@@ -88,7 +86,6 @@ __all__ = [
     "log_with_context",
     "setup_logging",
     "traced",
-    
     # Propagation
     "B3Propagator",
     "ContextPropagator",
