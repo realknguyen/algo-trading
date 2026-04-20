@@ -1,11 +1,6 @@
 """Trading algorithms module."""
 
-from algorithms.base_algorithm import (
-    BaseAlgorithm,
-    AlgorithmConfig,
-    AlgorithmState,
-    Signal
-)
+from algorithms.base_algorithm import BaseAlgorithm, AlgorithmConfig, AlgorithmState, Signal
 
 from algorithms.quantconnect_adapter import (
     QuantConnectAdapter,
@@ -15,22 +10,22 @@ from algorithms.quantconnect_adapter import (
     Security,
     Portfolio,
     Holdings,
-    Resolution
+    Resolution,
 )
 
 __all__ = [
     # Base algorithm
-    'BaseAlgorithm',
-    'AlgorithmConfig',
-    'AlgorithmState',
-    'Signal',
+    "BaseAlgorithm",
+    "AlgorithmConfig",
+    "AlgorithmState",
+    "Signal",
     # QuantConnect adapter
-    'QuantConnectAdapter',
-    'QCAlgorithmInterface',
-    'QCAlgorithmConfig',
-    'Slice',
-    'Security',
-    'Portfolio',
-    'Holdings',
-    'Resolution'
+    "QuantConnectAdapter",
+    "QCAlgorithmInterface",
+    "QCAlgorithmConfig",
+    "Slice",
+    "Security",
+    "Portfolio",
+    "Holdings",
+    "Resolution",
 ]

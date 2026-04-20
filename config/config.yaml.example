@@ -15,7 +15,7 @@ brokers:
     paper: true  # Use paper trading
     base_url: "https://paper-api.alpaca.markets"  # Paper trading URL
     # Live URL: "https://api.alpaca.markets"
-  
+
   interactive_brokers:
     host: "127.0.0.1"
     port: 7497  # TWS: 7496, IB Gateway: 4001
@@ -58,7 +58,7 @@ notifications:
     username: "your_email@gmail.com"
     password: "your_app_password"
     to_email: "your_email@gmail.com"
-  
+
   webhook:
     enabled: false
     url: "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"

@@ -1,0 +1,20 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
+        files: ^(src/cli\.py|src/data/|src/runtime/|config/|trading_logging/|tests/unit/test_cli\.py|tests/unit/test_data_fetcher\.py|tests/unit/test_runtime_database\.py|tests/unit/test_top_level_runtime\.py)
+
+  - repo: https://github.com/PyCQA/flake8
+    rev: 7.1.1
+    hooks:
+      - id: flake8
+        files: ^(src/cli\.py|src/data/|src/runtime/|config/|trading_logging/|tests/unit/test_cli\.py|tests/unit/test_data_fetcher\.py|tests/unit/test_runtime_database\.py|tests/unit/test_top_level_runtime\.py)

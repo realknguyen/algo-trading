@@ -13,7 +13,7 @@ Quick Start:
     ...     ExchangeLimitConfig,
     ...     Priority,
     ... )
-    
+
     >>> # Configure rate limits for an exchange
     >>> config = ExchangeLimitConfig(
     ...     exchange_name="binance",
@@ -22,11 +22,11 @@ Quick Start:
     ...     weight_limit=1200,
     ...     weight_window=60.0
     ... )
-    
+
     >>> # Get coordinator and register exchange
     >>> coordinator = GlobalRateCoordinator.get_instance()
     >>> coordinator.register_exchange("binance", config)
-    
+
     >>> # Use context manager for rate-limited requests
     >>> async with coordinator.request("binance", "/api/v3/order", "POST", priority=Priority.HIGH):
     ...     # Your HTTP request here
@@ -45,7 +45,7 @@ Advanced Usage:
     ...         weight=10
     ...     )
     ... ]
-    
+
     >>> # Distributed storage with Redis
     >>> from src.rate_limiter import create_storage_backend
     >>> storage = create_storage_backend("redis", redis_url="redis://localhost:6379")
@@ -117,7 +117,6 @@ __all__ = [
     "TokenBucketGroup",
     "Priority",
     "WaitingRequest",
-    
     # Rate Limiter
     "RateLimiter",
     "MultiExchangeRateLimiter",
@@ -126,7 +125,6 @@ __all__ = [
     "SlidingWindowLimiter",
     "RateLimiterBackend",
     "InMemoryBackend",
-    
     # Coordinator
     "GlobalRateCoordinator",
     "RateLimitHeaders",
@@ -134,7 +132,6 @@ __all__ = [
     "QueuedRequest",
     "RateLimitExceeded",
     "get_coordinator",
-    
     # Storage
     "StorageBackend",
     "FileStorageBackend",
@@ -143,13 +140,11 @@ __all__ = [
     "RateLimitStateManager",
     "RateLimitState",
     "create_storage_backend",
-    
     # HTTP Client
     "RateLimitedClient",
     "ExchangeClientFactory",
     "RateLimitError",
     "create_default_weights",
-    
     # Integration
     "rate_limited",
     "adapt_base_adapter",

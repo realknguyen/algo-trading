@@ -74,7 +74,13 @@ jobs:
 
       - name: Validate environment
         run: |
-          python -m compileall -q src adapters algorithms backtesting order_management risk_management tests
+          python -m compileall -q src adapters algorithms backtesting order_management risk_management trading_logging config database tests main.py
+          python main.py list-strategies
+          python main.py backtest --help > /dev/null
+          python main.py init-db --database-url sqlite:///./.ci-smoke.db > /dev/null
+          rm -f ./.ci-smoke.db
+          python main.py paper --help > /dev/null
+          python main.py live --help > /dev/null
           python -m pip check
 
       - name: Run full test suite with coverage

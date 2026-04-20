@@ -145,9 +145,7 @@ class RiskManager:
     def get_risk_metrics(self) -> Dict[str, Any]:
         """Return current risk metrics as plain scalars."""
         drawdown_amount = self.peak_capital - self.current_capital
-        drawdown_pct = (
-            (drawdown_amount / self.peak_capital) * 100 if self.peak_capital else 0.0
-        )
+        drawdown_pct = (drawdown_amount / self.peak_capital) * 100 if self.peak_capital else 0.0
         return {
             "current_capital": self.current_capital,
             "peak_capital": self.peak_capital,

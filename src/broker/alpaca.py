@@ -76,9 +76,15 @@ class AlpacaBroker(BaseBroker):
             "type": order.order_type.value,
             "time_in_force": order.time_in_force,
         }
-        if order.order_type in {OrderType.LIMIT, OrderType.STOP_LIMIT} and order.limit_price is not None:
+        if (
+            order.order_type in {OrderType.LIMIT, OrderType.STOP_LIMIT}
+            and order.limit_price is not None
+        ):
             payload["limit_price"] = str(order.limit_price)
-        if order.order_type in {OrderType.STOP, OrderType.STOP_LIMIT} and order.stop_price is not None:
+        if (
+            order.order_type in {OrderType.STOP, OrderType.STOP_LIMIT}
+            and order.stop_price is not None
+        ):
             payload["stop_price"] = str(order.stop_price)
         return payload
 

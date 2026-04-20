@@ -13,7 +13,7 @@ from adapters.base_adapter import (
     ExchangeError,
     AuthenticationError,
     InsufficientFundsError,
-    InvalidSymbolError
+    InvalidSymbolError,
 )
 
 from adapters.binance import BinanceAdapter
@@ -22,22 +22,22 @@ from adapters.coinbase import CoinbaseAdapter
 
 __all__ = [
     # Base classes
-    'BaseExchangeAdapter',
-    'Order',
-    'OrderType',
-    'OrderSide',
-    'OrderStatus',
-    'TimeInForce',
-    'Ticker',
-    'Position',
-    'Balance',
+    "BaseExchangeAdapter",
+    "Order",
+    "OrderType",
+    "OrderSide",
+    "OrderStatus",
+    "TimeInForce",
+    "Ticker",
+    "Position",
+    "Balance",
     # Exceptions
-    'ExchangeError',
-    'AuthenticationError',
-    'InsufficientFundsError',
-    'InvalidSymbolError',
+    "ExchangeError",
+    "AuthenticationError",
+    "InsufficientFundsError",
+    "InvalidSymbolError",
     # Adapters
-    'BinanceAdapter',
-    'KrakenAdapter',
-    'CoinbaseAdapter'
+    "BinanceAdapter",
+    "KrakenAdapter",
+    "CoinbaseAdapter",
 ]

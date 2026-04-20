@@ -5,13 +5,7 @@ from risk_management.risk_manager import (
     RiskLimits,
     RiskLevel,
     PositionRisk,
-    PortfolioRisk
+    PortfolioRisk,
 )
 
-__all__ = [
-    'RiskManager',
-    'RiskLimits',
-    'RiskLevel',
-    'PositionRisk',
-    'PortfolioRisk'
-]
+__all__ = ["RiskManager", "RiskLimits", "RiskLevel", "PositionRisk", "PortfolioRisk"]
