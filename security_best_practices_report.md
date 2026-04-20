@@ -1,126 +1,161 @@
 # Security Best Practices Report
 
+## Purpose Of This Document
+
+This document is a current high-level security posture summary for the repository, focused on the code that matters most to the shipped CLI and runtime surfaces.
+
+It is not a formal third-party penetration test.
+It is not a blanket certification for unattended live trading.
+It is an engineering-oriented snapshot of what is hardened, what still needs care, and where contributors should focus their attention.
+
 ## Executive Summary
 
-I reviewed the Python backend and trading execution surfaces in this repository, focusing on configuration and secret handling, exchange authentication, logging, order execution, and risk enforcement.
+The repository is in a meaningfully better security state than a prototype:
 
-There is no framework-specific security reference in the loaded skill set for this stack beyond Flask/FastAPI/Django, and this repo does not appear to use one of those frameworks directly. The findings below are therefore based on general Python backend security practices plus the repository's own trading-safety rules.
+- settings use secret-aware types in the main config layer
+- database URL construction is safer
+- live execution requires explicit user intent
+- the lightweight execution path enforces risk validation
+- the top-level OMS path enforces risk validation before order submission
 
-I found **3 reportable issues**:
+Based on the current shipped CLI/runtime surface, I did not confirm a currently open critical finding equivalent to the older “risk gate bypass” concern that used to matter here.
 
-- **1 Critical**: live order submission paths bypass the risk gate and circuit-breaker checks.
-- **1 High**: logging is configured to capture local variables and stack state, which can leak credentials and private keys into persistent logs.
-- **1 Medium**: credential handling relies on insecure defaults and plain-string secret fields, increasing accidental exposure and misconfiguration risk.
+The main remaining risks are architectural and operational:
 
-## Review Scope
+- multiple overlapping runtime surfaces
+- split adapter packages
+- uneven maturity across venue-specific or auxiliary subsystems
+- the difference between “executable” and “operationally certified”
 
-Reviewed areas:
+## Highest-Priority Security Boundaries
 
-- `config/settings.py`
-- `database/migrations/env.py`
-- `database/models.py`
-- `logging/log_config.py`
-- `order_management/order_manager.py`
-- `risk_management/risk_manager.py`
-- `src/execution/engine.py`
-- `src/risk/manager.py`
-- `src/adapters/auth.py`
-- representative exchange adapters and credential-loading helpers
+The most important boundaries in this repo remain:
 
-Not reviewed in depth:
+- exchange authentication and request signing
+- risk-gated order submission
+- live runtime guardrails
+- secret-aware config handling
+- logging around sensitive operations
 
-- exchange-specific business correctness for every adapter
-- deployment infrastructure outside the repository
-- external secret stores, CI/CD, or runtime host hardening
+## Current Strengths
 
-## Critical Findings
+### 1. Live Execution Is Explicitly Guarded
 
-### SBP-001: Order submission paths bypass the risk gate and circuit breaker
+The shipped CLI requires deliberate user intent before live order submission can happen.
 
-**Severity:** Critical
+Practical effect:
 
-**Impact:** The system can continue submitting live orders even after risk controls disable trading, allowing orders to bypass capital, exposure, and circuit-breaker protections.
+- `live` by itself is not enough to submit orders
+- the user must opt into execution
+- the user must also confirm live intent explicitly
 
-**Evidence**
+### 2. Risk Validation Exists At Execution Boundaries
 
-- `risk_management/risk_manager.py:240-295` defines the intended execution gate through `can_trade()` and `check_trade_risk(...)`.
-- `order_management/order_manager.py:184-253` validates only order shape, then calls `self.exchange.place_order(order)` directly with no `can_trade()` or trade-risk enforcement.
-- `order_management/order_manager.py:255-323` submits stop-loss and take-profit legs by recursively reusing the same ungated `submit_order(...)` path.
-- `src/execution/engine.py:41-51` also submits directly to `broker.submit_order(order)` without any risk validation.
-- `src/risk/manager.py:91-112` shows a second risk API (`validate_order(...)`) exists, but the execution paths above do not enforce it either.
+The current shipped paths use risk-aware execution boundaries:
 
-**Why this matters**
+- the lightweight execution engine validates with the lightweight risk manager
+- the top-level order manager validates against the top-level risk manager before exchange submission
 
-This repo's own workspace instructions say to always verify trading is allowed before suggesting or executing orders. In the current code, risk logic exists but is not made authoritative at the execution boundary, so a caller that reaches the OMS or execution engine can bypass the safety layer completely.
+This is a major safety property for a trading repository.
 
-**Recommended remediation**
+### 3. Config Handling Is Stronger
 
-- Make a risk-checking dependency mandatory for every order-submission boundary.
-- Fail closed: reject submission unless `can_trade()` is true and a pre-trade validator returns success.
-- Use one authoritative risk interface for execution to avoid parallel code paths with different behavior.
-- Add tests that prove orders are rejected after circuit-breaker activation and when position-size / exposure limits are exceeded.
+The main config layer:
 
-## High Findings
+- uses secret-aware field types
+- builds database URLs more safely
+- centralizes runtime settings through one module
 
-### SBP-002: Diagnostic logging can leak secrets and private keys into persistent logs
+### 4. The Main Runtime Surface Is Easier To Reason About
 
-**Severity:** High
+Because the CLI is explicit and documented, it is easier to audit the supported path than when the repo looked like a loose set of partially related modules.
 
-**Evidence**
+## Residual Risks And Caveats
 
-- `logging/log_config.py:42-63` enables `backtrace=True` and `diagnose=True` for both console and file logging.
-- `logging/log_config.py:178` applies this configuration automatically at module import time.
-- `src/adapters/auth.py:436-440` and `src/adapters/auth.py:532-536` load private-key material into local variables before signing.
-- `adapters/coinbase.py:158-159` and `adapters/coinbase.py:832-833` deserialize private keys from `api_secret`.
-- `src/adapters/hyperliquid.py:248-255` stores and derives wallet/private-key state directly from the provided secret.
+### 1. Architectural Duplication Still Costs Confidence
 
-**Why this matters**
+The repo still has:
 
-`loguru` with `diagnose=True` includes local variable values in tracebacks. In authentication and signing code, those locals can include API secrets, PEM private keys, or derived wallet key material. Because file logging is also enabled, any auth/signing exception can turn into a durable credential leak in `logs/` and its compressed archives.
+- a lightweight local stack
+- a top-level runtime stack
+- an extended adapter toolkit under `src/adapters/`
 
-**Recommended remediation**
+That duplication increases the chance of:
 
-- Disable `diagnose=True` for normal and production-like runs.
-- Restrict `backtrace=True` to explicit local debugging mode.
-- Move logging initialization behind environment-aware startup instead of import-time side effects.
-- Add explicit redaction for secret-bearing fields (`api_secret`, `passphrase`, `private_key`, wallet key material) before logging exception context.
+- fixing behavior in one surface but not another
+- documenting one surface while users operate another
+- assuming support is broader than it really is
 
-## Medium Findings
+### 2. Adapter Availability Is Not The Same As Adapter Certification
 
-### SBP-003: Credential handling relies on insecure defaults and plain-string secret fields
+A venue adapter existing in the tree does not automatically mean:
 
-**Severity:** Medium
+- it is part of the shipped runtime
+- it is well covered by the default test suite
+- it is operationally ready for unattended live capital
 
-**Evidence**
+### 3. Logging Around Sensitive Subsystems Still Deserves Care
 
-- `database/migrations/env.py:26-29` falls back to a credentialed default database URL: `postgresql://trader:password@localhost:5432/trading_db`.
-- `config/settings.py:17-27` constructs database URLs by interpolating raw password strings directly into the DSN.
-- `config/settings.py:34-66` stores exchange API secrets and passphrases as plain `str` fields.
+Any code touching:
 
-**Why this matters**
+- auth/signing
+- wallet keys
+- exchange credentials
+- live execution failures
 
-Hard-coded credential fallbacks increase the chance that shared or long-lived environments run with known defaults. Plain-string secret fields are also easier to leak through debugging, repr/model dumps, or exception formatting than secret-aware wrappers. Combined with the current logging setup, this raises the chance of accidental credential disclosure.
+should still be reviewed carefully for accidental secret leakage through logs or tracebacks.
 
-**Recommended remediation**
+### 4. Live Runtime Support Should Stay Narrow And Evidence-Based
 
-- Remove the credentialed fallback from Alembic and require `DATABASE_URL` or an explicit secure config source.
-- Represent secrets with secret-aware types such as `SecretStr`.
-- Build database URLs with a URL builder instead of direct string interpolation so special characters in passwords are handled safely and credentials are less likely to leak in raw strings.
+The current repo is safer when claims remain precise:
 
-## Remediation Backlog
+- which strategies are wired into the runtime
+- which exchanges the runtime bridge actually supports
+- which surfaces are auxiliary rather than primary
 
-1. **Enforce risk validation at the execution boundary**
-   Make risk approval mandatory inside `OrderManager.submit_order(...)` and any alternate execution path before broker/exchange submission.
-2. **Turn off diagnostic traceback logging outside explicit debug mode**
-   Remove `diagnose=True` from default logging, and add secret redaction for auth/signing code paths.
-3. **Harden secret and database configuration**
-   Replace plain-string secret fields with secret-aware types, remove credentialed fallbacks, and centralize DSN construction.
-4. **Add regression tests for safety-critical paths**
-   Cover circuit-breaker rejection, exposure-limit rejection, and secret-redaction behavior.
+## Recommended Ongoing Practices
 
-## Suggested Verification After Fixes
+### For Maintainers
 
-- Unit test: order submission is rejected when `can_trade()` is false.
-- Unit test: order submission is rejected when pre-trade risk validation fails.
-- Unit test: auth/signing exceptions do not emit raw secrets into logs.
-- Smoke test: configuration still loads correctly from environment variables after moving to secret-aware fields.
+- keep live execution explicit and guarded
+- keep risk checks fail-closed
+- keep docs aligned with the shipped runtime surface
+- prefer consolidation over more parallel abstractions
+
+### For Contributors
+
+- work in the correct runtime surface
+- do not confuse `adapters/` with `src/adapters/`
+- add focused tests for risk- and execution-sensitive changes
+- avoid overclaiming live readiness
+
+## Suggested Verification For Security-Sensitive Changes
+
+For risk or execution changes:
+
+- verify trading-disabled paths
+- verify oversize-order rejection paths
+- verify normal successful order paths
+
+For config or auth changes:
+
+- verify config still loads from environment
+- verify secret-bearing fields are still handled safely
+- verify no new logs expose secrets
+
+For runtime changes:
+
+- run the smallest relevant CLI and unit/runtime checks
+- keep `paper` dry-run behavior intact unless intentionally changing it
+
+## Final Assessment
+
+The current shipped CLI/runtime surface is far safer and clearer than a loose collection of trading modules.
+
+That is good news.
+
+The right conclusion is still:
+
+- strong baseline for continued hardening
+- suitable for local strategy work and guarded runtime progression
+- not automatic certification for unattended live deployment
