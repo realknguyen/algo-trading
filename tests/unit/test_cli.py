@@ -4,7 +4,12 @@ import argparse
 
 import pytest
 
-from src.cli import _parse_param_args, _validate_backtest_args, _validate_runtime_args
+from src.cli import (
+    _parse_param_args,
+    _run_list_strategies,
+    _validate_backtest_args,
+    _validate_runtime_args,
+)
 
 
 def test_parse_param_args_coerces_common_scalar_types():
@@ -79,3 +84,16 @@ def test_validate_runtime_args_requires_live_confirmation_for_execution():
 
     with pytest.raises(ValueError, match="requires --confirm-live"):
         _validate_runtime_args(args)
+
+
+def test_run_list_strategies_verbose_prints_descriptions_and_defaults(capsys):
+    """Verbose strategy listing should help newcomers discover available knobs."""
+    args = argparse.Namespace(verbose=True)
+
+    result = _run_list_strategies(args)
+
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "sma_crossover: Simple Moving Average Crossover Strategy." in captured.out
+    assert "defaults: fast_period=20, slow_period=50" in captured.out
+    assert "sma_crossover_risk: SMA crossover strategy with simple volatility and stop metadata." in captured.out

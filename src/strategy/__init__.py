@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+import inspect
 from typing import Optional, Dict, Any
 import pandas as pd
 
@@ -46,6 +47,15 @@ class BaseStrategy(ABC):
         self.params.update(params)
 
 
+@dataclass(frozen=True)
+class StrategyDefinition:
+    """Beginner-friendly strategy metadata for CLI discovery."""
+
+    name: str
+    description: str
+    default_params: Dict[str, Any]
+
+
 def list_strategies() -> list[str]:
     """Return registered strategy names."""
     return sorted(list(_STRATEGY_REGISTRY.keys()))
@@ -65,6 +75,32 @@ def create_strategy(name: str, params: Optional[Dict[str, Any]] = None):
         available = ", ".join(list_strategies())
         raise ValueError(f"Unknown strategy '{name}'. Available: {available}")
     return strategy_cls(params)
+
+
+def describe_strategy(name: str) -> Optional[StrategyDefinition]:
+    """Return strategy description and defaults for CLI/help output."""
+    strategy_cls = get_strategy(name)
+    if strategy_cls is None:
+        return None
+
+    strategy = create_strategy(name)
+    doc = inspect.getdoc(strategy_cls) or ""
+    summary = doc.splitlines()[0].strip() if doc else strategy.name
+    return StrategyDefinition(
+        name=name.lower(),
+        description=summary,
+        default_params=strategy.get_parameters(),
+    )
+
+
+def describe_strategies() -> list[StrategyDefinition]:
+    """Return discovery metadata for all registered strategies."""
+    descriptions: list[StrategyDefinition] = []
+    for name in list_strategies():
+        strategy = describe_strategy(name)
+        if strategy is not None:
+            descriptions.append(strategy)
+    return descriptions
 
 
 _STRATEGY_REGISTRY = {}

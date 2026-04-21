@@ -5,7 +5,8 @@ import pandas as pd
 import numpy as np
 from abc import ABC
 
-from src.strategy import BaseStrategy, Signal
+import src.strategy as strategy_module
+from src.strategy import BaseStrategy, Signal, describe_strategies, describe_strategy
 
 
 class TestBaseStrategy:
@@ -63,3 +64,57 @@ class TestSignal:
 
         assert signal.confidence == 1.0  # Default
         assert signal.metadata is None  # Default
+
+
+class TestStrategyDiscovery:
+    """Tests for strategy registry discovery helpers."""
+
+    def test_describe_strategy_returns_summary_and_defaults(self):
+        """Known strategies should expose a short description and default params."""
+        strategy = describe_strategy("sma_crossover_risk")
+
+        assert strategy is not None
+        assert strategy.name == "sma_crossover_risk"
+        assert strategy.description == "SMA crossover strategy with simple volatility and stop metadata."
+        assert strategy.default_params["fast_period"] == 10
+        assert strategy.default_params["take_profit_pct"] == 6.0
+
+    def test_describe_strategies_lists_registered_entries(self):
+        """Strategy discovery should cover the whole registry."""
+        strategies = describe_strategies()
+
+        assert [strategy.name for strategy in strategies] == [
+            "sma_crossover",
+            "sma_crossover_risk",
+        ]
+
+    def test_describe_strategy_supports_registry_entries_that_require_params_arg(self, monkeypatch):
+        """Discovery should use the same constructor contract as runtime creation."""
+
+        class ParamsRequiredStrategy(BaseStrategy):
+            """Strategy with required params constructor."""
+
+            def __init__(self, params):
+                super().__init__(name="ParamsRequired", params=params or {"window": 7})
+
+            def initialize(self, data):
+                pass
+
+            def on_data(self, data):
+                return None
+
+            def get_parameters(self):
+                return self.params.copy()
+
+        monkeypatch.setitem(
+            strategy_module._STRATEGY_REGISTRY,
+            "params_required",
+            ParamsRequiredStrategy,
+        )
+
+        strategy = describe_strategy("params_required")
+
+        assert strategy is not None
+        assert strategy.name == "params_required"
+        assert strategy.description == "Strategy with required params constructor."
+        assert strategy.default_params == {"window": 7}
