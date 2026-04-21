@@ -13,7 +13,7 @@ from log_config import setup_logging
 from src.backtest.runner import BacktestRunner
 from src.data.fetcher import DataFetcher
 from src.runtime import build_runtime_from_config, initialize_database
-from src.strategy import create_strategy, list_strategies
+from src.strategy import create_strategy, describe_strategies, list_strategies
 
 
 def _parse_param_args(raw_params: Optional[list[str]]) -> Dict[str, object]:
@@ -152,8 +152,18 @@ def _run_backtest(args: argparse.Namespace) -> int:
     return 0
 
 
-def _run_list_strategies(_args: argparse.Namespace) -> int:
+def _run_list_strategies(args: argparse.Namespace) -> int:
     """Print registered strategies."""
+    if getattr(args, "verbose", False):
+        for strategy in describe_strategies():
+            print(f"{strategy.name}: {strategy.description}")
+            if strategy.default_params:
+                defaults = ", ".join(
+                    f"{key}={value}" for key, value in strategy.default_params.items()
+                )
+                print(f"  defaults: {defaults}")
+        return 0
+
     print("\n".join(list_strategies()))
     return 0
 
@@ -242,6 +252,11 @@ def _build_parser() -> argparse.ArgumentParser:
     backtest_parser.add_argument("--output", help="Write result JSON to file")
 
     list_parser = subparsers.add_parser("list-strategies", help="List available strategies")
+    list_parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Show descriptions and default parameters for each strategy",
+    )
     list_parser.set_defaults(func=_run_list_strategies)
 
     init_db_parser = subparsers.add_parser("init-db", help="Initialize the configured database")
